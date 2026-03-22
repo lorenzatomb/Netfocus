@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
@@ -9,6 +8,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Netfocus"/>
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-EW3WE7ECQZ"></script>
+<script>
+window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
+gtag('js',new Date());gtag('config','G-EW3WE7ECQZ');
+function track(name,params){try{gtag('event',name,params||{})}catch(e){}}
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -113,8 +119,8 @@ let state={
 // Load saved
 try{let s=localStorage.getItem('nf3');if(s){let d=JSON.parse(s);Object.assign(state,d)}}catch(e){}
 
-function save(){try{localStorage.setItem('nf3',JSON.stringify(state));toast('Salvo!')}catch(e){}}
-function reset(){if(!confirm('Resetar?'))return;localStorage.removeItem('nf3');location.reload()}
+function save(){try{localStorage.setItem('nf3',JSON.stringify(state));toast('Salvo!');let cp=calc();track('save_data',{total_venda:cp.tS,margem_pct:(cp.mp*100).toFixed(1),num_hw:state.hw.length,num_sw:state.sw.length,num_sv:state.sv.length})}catch(e){}}
+function reset(){if(!confirm('Resetar?'))return;track('reset_data');localStorage.removeItem('nf3');location.reload()}
 
 function toast(m){let t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1500)}
 
@@ -158,7 +164,7 @@ function render(){
       </div>
     </div>
     <div class="tabs">
-      ${['Custos','Hardwares','SW+Serv','Consolidado'].map((t,i)=>`<button class="tab ${state.tab===i?'on':''}" onclick="state.tab=${i};render()">${t}</button>`).join('')}
+      ${['Custos','Hardwares','SW+Serv','Consolidado'].map((t,i)=>`<button class="tab ${state.tab===i?'on':''}" onclick="track('tab_change',{tab:'${t}'});state.tab=${i};render()">${t}</button>`).join('')}
     </div>
   </div>
   <div class="board"><div class="col">`;
@@ -309,11 +315,11 @@ function prods(items,mk,cat){
         <div><div class="prd-name">${p.d||'Sem descricao'}</div><div class="prd-sub">${p.f||''}</div></div>
         <div style="display:flex;gap:4px;align-items:center">
           ${p.mx>0?`<span class="tag" style="background:${ok?'#00d68f22':'#ff637022'};color:${ok?'var(--g)':'var(--r)'}">${ok?'OK':'!'} ${BRL(sl)}</span>`:''}
-          <button class="del-btn" onclick="state.${cat}.splice(${i},1);render()">✕</button>
+          <button class="del-btn" onclick="track('remove_product',{category:'${cat}',product:state.${cat}[${i}].d});state.${cat}.splice(${i},1);render()">✕</button>
         </div>
       </div>
       <div class="prd-grid">
-        <div><small>QDE</small><input class="inp" type="number" min="0" value="${p.q}" style="width:100%;text-align:center" onchange="state.${cat}[${i}].q=+this.value;render()"></div>
+        <div><small>QDE</small><input class="inp" type="number" min="0" value="${p.q}" style="width:100%;text-align:center" onchange="track('update_quantity',{category:'${cat}',product:state.${cat}[${i}].d,new_qty:+this.value});state.${cat}[${i}].q=+this.value;render()"></div>
         <div><small>CUSTO UNIT.</small><div class="val" style="color:var(--t1)">${BRL(u)}</div></div>
         <div><small>VENDA UNIT.</small><div class="val" style="color:var(--g)">${BRL(uv)}</div></div>
       </div>
@@ -324,13 +330,36 @@ function prods(items,mk,cat){
       </div>
     </div>`;
   });
-  h+=`<button class="add-btn" onclick="state.${cat}.push({id:Date.now(),f:'',d:'',q:1,v:0,mx:0,dp:0});render()">+ Novo item</button>`;
+  h+=`<button class="add-btn" onclick="track('add_product',{category:'${cat}'});state.${cat}.push({id:Date.now(),f:'',d:'',q:1,v:0,mx:0,dp:0});render()">+ Novo item</button>`;
   return h;
 }
 
 // ─── INIT ───
 render();
-</script>
 
+// ─── PERFORMANCE TRACKING ───
+window.addEventListener('load',function(){
+  setTimeout(function(){
+    if(window.performance){
+      let p=performance.getEntriesByType('navigation')[0];
+      if(p){
+        track('page_performance',{
+          dns_ms:Math.round(p.domainLookupEnd-p.domainLookupStart),
+          connect_ms:Math.round(p.connectEnd-p.connectStart),
+          ttfb_ms:Math.round(p.responseStart-p.requestStart),
+          dom_ready_ms:Math.round(p.domContentLoadedEventEnd-p.startTime),
+          load_ms:Math.round(p.loadEventEnd-p.startTime)
+        });
+      }
+    }
+    let cp=calc();
+    track('session_start_data',{
+      total_venda:cp.tS,
+      margem_pct:(cp.mp*100).toFixed(1),
+      num_products:state.hw.length+state.sw.length+state.sv.length
+    });
+  },1000);
+});
+</script>
 </body>
 </html>
