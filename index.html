@@ -13,7 +13,7 @@
 <script>
 window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
 gtag('js',new Date());gtag('config','G-EW3WE7ECQZ');
-function track(name,params){try{gtag('event',name,params||{})}catch(e){}}
+function track(name,params){try{gtag('event',name,params||{});if(typeof logEvent==='function')logEvent(name,params)}catch(e){try{if(typeof logEvent==='function')logEvent(name,params)}catch(e2){}}}
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600;700&display=swap');
@@ -77,6 +77,27 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}input[type
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--b3);border:1px solid var(--g);color:var(--g);padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s}
 .toast.show{opacity:1}
 .highlight{padding:8px;background:#00d68f15;border-radius:8px;border:1px solid #00d68f33;margin-top:6px}
+.ana-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.ana-card{background:var(--b2);border-radius:10px;padding:12px;border:1px solid var(--bd);text-align:center}
+.ana-card small{font-size:8px;color:var(--t2);text-transform:uppercase;font-weight:600;display:block;margin-bottom:4px}
+.ana-card .ana-num{font-size:22px;font-weight:800;font-family:'IBM Plex Mono',monospace}
+.ana-log{max-height:250px;overflow-y:auto;border-radius:8px;background:var(--b0);border:1px solid var(--bd);padding:6px}
+.ana-log-item{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-bottom:1px solid var(--b3);font-size:10px}
+.ana-log-item:last-child{border:none}
+.ana-log-item .ev-name{color:var(--cy);font-weight:700;font-family:'IBM Plex Mono',monospace}
+.ana-log-item .ev-time{color:var(--t2)}
+.ana-log-item .ev-detail{color:var(--t1);font-size:9px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ana-hbar{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ana-hbar .ana-lbl{color:var(--t2);font-size:10px;width:80px;font-weight:500;text-align:right}
+.ana-hbar .ana-track{flex:1;height:20px;background:var(--b0);border-radius:4px;overflow:hidden;position:relative}
+.ana-hbar .ana-fill{height:100%;border-radius:4px;transition:width .4s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#fff;min-width:24px}
+.ana-section{margin-bottom:14px}
+.ana-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--b3)}
+.ana-perf-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.ana-perf-item{background:var(--b2);border-radius:8px;padding:8px;text-align:center;border:1px solid var(--bd)}
+.ana-perf-item small{font-size:7px;color:var(--t2);text-transform:uppercase;font-weight:600;display:block;margin-bottom:2px}
+.ana-perf-item .val{font-size:14px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.ana-clear{width:100%;padding:8px;border-radius:8px;border:1px solid var(--r);background:transparent;color:var(--r);font-size:11px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;margin-top:10px}
 </style>
 </head>
 <body>
@@ -119,10 +140,23 @@ let state={
 // Load saved
 try{let s=localStorage.getItem('nf3');if(s){let d=JSON.parse(s);Object.assign(state,d)}}catch(e){}
 
-function save(){try{localStorage.setItem('nf3',JSON.stringify(state));toast('Salvo!');let cp=calc();track('save_data',{total_venda:cp.tS,margem_pct:(cp.mp*100).toFixed(1),num_hw:state.hw.length,num_sw:state.sw.length,num_sv:state.sv.length})}catch(e){}}
+function save(){try{localStorage.setItem('nf3',JSON.stringify(state));toast('Salvo!');let cp=calc();track('save_data',{total_venda:BRL(cp.tS),margem:PCT(cp.mp),hw:state.hw.length,sw:state.sw.length,sv:state.sv.length})}catch(e){}}
 function reset(){if(!confirm('Resetar?'))return;track('reset_data');localStorage.removeItem('nf3');location.reload()}
 
 function toast(m){let t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1500)}
+
+// ─── LOCAL ANALYTICS ───
+let analytics={events:[],sessions:0,firstVisit:null,perf:null};
+try{let a=localStorage.getItem('nf3-analytics');if(a)analytics=JSON.parse(a)}catch(e){}
+if(!analytics.firstVisit)analytics.firstVisit=new Date().toISOString();
+analytics.sessions=(analytics.sessions||0)+1;
+
+function logEvent(name,params){
+  analytics.events.push({n:name,p:params||{},t:new Date().toISOString()});
+  if(analytics.events.length>500)analytics.events=analytics.events.slice(-500);
+  try{localStorage.setItem('nf3-analytics',JSON.stringify(analytics))}catch(e){}
+}
+function clearAnalytics(){if(!confirm('Limpar analytics?'))return;analytics={events:[],sessions:analytics.sessions,firstVisit:analytics.firstVisit,perf:null};localStorage.setItem('nf3-analytics',JSON.stringify(analytics));toast('Analytics limpo');render()}
 
 // ─── COMPUTE ───
 function calc(){
@@ -164,7 +198,7 @@ function render(){
       </div>
     </div>
     <div class="tabs">
-      ${['Custos','Hardwares','SW+Serv','Consolidado'].map((t,i)=>`<button class="tab ${state.tab===i?'on':''}" onclick="track('tab_change',{tab:'${t}'});state.tab=${i};render()">${t}</button>`).join('')}
+      ${['Custos','Hardwares','SW+Serv','Consolidado','Analytics'].map((t,i)=>`<button class="tab ${state.tab===i?'on':''}" onclick="track('tab_change',{tab:'${t}'});state.tab=${i};render()">${t}</button>`).join('')}
     </div>
   </div>
   <div class="board"><div class="col">`;
@@ -270,6 +304,121 @@ function render(){
     `);
   }
 
+  // ─── TAB 4: ANALYTICS ───
+  if(state.tab===4){
+    let evts=analytics.events||[];
+    let counts={};
+    evts.forEach(e=>{counts[e.n]=(counts[e.n]||0)+1});
+    let totalEvts=evts.length;
+    let maxCount=Math.max(...Object.values(counts),1);
+    
+    // Events today
+    let today=new Date().toISOString().slice(0,10);
+    let todayEvts=evts.filter(e=>e.t&&e.t.slice(0,10)===today).length;
+    
+    // Last 7 days activity
+    let days={};
+    for(let i=6;i>=0;i--){
+      let d=new Date();d.setDate(d.getDate()-i);
+      let key=d.toISOString().slice(0,10);
+      let label=d.toLocaleDateString('pt-BR',{weekday:'short'}).slice(0,3);
+      days[key]={label,count:0};
+    }
+    evts.forEach(e=>{if(e.t){let k=e.t.slice(0,10);if(days[k])days[k].count++}});
+    let dayArr=Object.values(days);
+    let maxDay=Math.max(...dayArr.map(d=>d.count),1);
+
+    // Product changes count
+    let prodChanges=evts.filter(e=>['add_product','remove_product','update_quantity'].includes(e.n)).length;
+    let saves=counts['save_data']||0;
+
+    // Perf data
+    let perfHtml='<div style="color:var(--t2);font-size:11px;text-align:center;padding:12px">Dados de performance aparecem apos o primeiro carregamento</div>';
+    if(analytics.perf){
+      let p=analytics.perf;
+      perfHtml=`<div class="ana-perf-grid">
+        <div class="ana-perf-item"><small>DNS</small><div class="val" style="color:var(--cy)">${p.dns}ms</div></div>
+        <div class="ana-perf-item"><small>TTFB</small><div class="val" style="color:var(--bl)">${p.ttfb}ms</div></div>
+        <div class="ana-perf-item"><small>DOM Ready</small><div class="val" style="color:var(--p)">${p.dom}ms</div></div>
+        <div class="ana-perf-item"><small>Load Total</small><div class="val" style="color:var(--g)">${p.load}ms</div></div>
+        <div class="ana-perf-item"><small>Conexao</small><div class="val" style="color:var(--o)">${p.conn}ms</div></div>
+        <div class="ana-perf-item"><small>Sessoes</small><div class="val" style="color:var(--cy)">${analytics.sessions}</div></div>
+      </div>`;
+    }
+
+    // Event color mapping
+    let evColor={save_data:'var(--g)',reset_data:'var(--r)',tab_change:'var(--bl)',add_product:'var(--cy)',remove_product:'var(--r)',update_quantity:'var(--o)',page_performance:'var(--p)',session_start_data:'var(--t1)'};
+
+    html+=`
+    <div class="ana-section">
+      <div class="ana-section-title">Visao Geral</div>
+      <div class="ana-grid">
+        <div class="ana-card"><small>Total Eventos</small><div class="ana-num" style="color:var(--cy)">${totalEvts}</div></div>
+        <div class="ana-card"><small>Eventos Hoje</small><div class="ana-num" style="color:var(--g)">${todayEvts}</div></div>
+        <div class="ana-card"><small>Saves</small><div class="ana-num" style="color:var(--bl)">${saves}</div></div>
+        <div class="ana-card"><small>Mudancas Produtos</small><div class="ana-num" style="color:var(--o)">${prodChanges}</div></div>
+      </div>
+    </div>
+
+    <div class="ana-section">
+      <div class="ana-section-title">Atividade - Ultimos 7 dias</div>
+      ${dayArr.map(d=>{
+        let w=maxDay>0?(d.count/maxDay)*100:0;
+        return`<div class="ana-hbar">
+          <span class="ana-lbl">${d.label}</span>
+          <div class="ana-track"><div class="ana-fill" style="width:${Math.max(w,2)}%;background:var(--cy)">${d.count}</div></div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="ana-section">
+      <div class="ana-section-title">Eventos por Tipo</div>
+      ${Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([name,count])=>{
+        let w=(count/maxCount)*100;
+        let c=evColor[name]||'var(--t1)';
+        let labels={save_data:'Salvar',reset_data:'Reset',tab_change:'Nav. Aba',add_product:'Add Produto',remove_product:'Rem. Produto',update_quantity:'Alt. Qtd',page_performance:'Performance',session_start_data:'Sessao'};
+        return`<div class="ana-hbar">
+          <span class="ana-lbl">${labels[name]||name}</span>
+          <div class="ana-track"><div class="ana-fill" style="width:${Math.max(w,4)}%;background:${c}">${count}</div></div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="ana-section">
+      <div class="ana-section-title">Performance</div>
+      ${perfHtml}
+    </div>
+
+    <div class="ana-section">
+      <div class="ana-section-title">Historico de Eventos (ultimos 50)</div>
+      <div class="ana-log">
+        ${evts.slice(-50).reverse().map(e=>{
+          let c=evColor[e.n]||'var(--t1)';
+          let labels={save_data:'Salvar',reset_data:'Reset',tab_change:'Nav. Aba',add_product:'Add Produto',remove_product:'Rem. Produto',update_quantity:'Alt. Qtd',page_performance:'Performance',session_start_data:'Sessao'};
+          let time=e.t?new Date(e.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';
+          let detail=e.p?Object.values(e.p).join(', '):'';
+          return`<div class="ana-log-item">
+            <span class="ev-name" style="color:${c}">${labels[e.n]||e.n}</span>
+            <span class="ev-detail">${detail}</span>
+            <span class="ev-time">${time}</span>
+          </div>`;
+        }).join('')}
+        ${evts.length===0?'<div style="text-align:center;padding:16px;color:var(--t2);font-size:11px">Nenhum evento registrado ainda. Use o app!</div>':''}
+      </div>
+    </div>
+
+    <div class="ana-section">
+      <div class="ana-section-title">Info da Sessao</div>
+      ${row('Primeiro acesso',analytics.firstVisit?new Date(analytics.firstVisit).toLocaleDateString('pt-BR'):'--','var(--cy)')}
+      ${row('Total sessoes',analytics.sessions||0,'var(--bl)')}
+      ${row('Eventos armazenados',evts.length+'/500','var(--t1)')}
+      ${row('GA4 Measurement ID','G-EW3WE7ECQZ','var(--p)')}
+    </div>
+
+    <button class="ana-clear" onclick="clearAnalytics()">Limpar dados de analytics</button>
+    `;
+  }
+
   html+=`</div></div>`;
   app.innerHTML=html;
 }
@@ -343,13 +492,16 @@ window.addEventListener('load',function(){
     if(window.performance){
       let p=performance.getEntriesByType('navigation')[0];
       if(p){
-        track('page_performance',{
-          dns_ms:Math.round(p.domainLookupEnd-p.domainLookupStart),
-          connect_ms:Math.round(p.connectEnd-p.connectStart),
-          ttfb_ms:Math.round(p.responseStart-p.requestStart),
-          dom_ready_ms:Math.round(p.domContentLoadedEventEnd-p.startTime),
-          load_ms:Math.round(p.loadEventEnd-p.startTime)
-        });
+        let perf={
+          dns:Math.round(p.domainLookupEnd-p.domainLookupStart),
+          conn:Math.round(p.connectEnd-p.connectStart),
+          ttfb:Math.round(p.responseStart-p.requestStart),
+          dom:Math.round(p.domContentLoadedEventEnd-p.startTime),
+          load:Math.round(p.loadEventEnd-p.startTime)
+        };
+        track('page_performance',perf);
+        analytics.perf=perf;
+        try{localStorage.setItem('nf3-analytics',JSON.stringify(analytics))}catch(e){}
       }
     }
     let cp=calc();
